@@ -57,7 +57,7 @@ for note in project_notes:
     already_voted = set()
     while relay_manager.message_pool.has_events():
         event = relay_manager.message_pool.get_event().event
-        if event.created_at > vote_close_date:
+        if event.created_at > vote_close_date or event in vote_events:
             continue
         vote_events.append(event)
         etags = list(filter(lambda t: t[0] == "e", event.tags))
