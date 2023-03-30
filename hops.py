@@ -102,3 +102,6 @@ print("finished. Writing.")
 with open('voters.txt','w') as f:
     print("found ", len(all_voters), " voters")
     f.write(str(all_voters))  # set of numbers & a tuple
+    
+print("done")
+sys.exit()

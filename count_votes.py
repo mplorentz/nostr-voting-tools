@@ -6,9 +6,9 @@ import time
 import threading
 import sys
 
-
 rootNote = "1d808b3f110d6a8b58d15103c3edcac8a0c486d7fbd9f5f4517b23fc372ffa30"
 author = "0f22c06eac1002684efcc68f568540e8342d1609d508bcd4312c038e6194f8b6"
+vote_close_date = 1680019200
 
 voters = set()
 
@@ -39,6 +39,7 @@ print("requesting replies to root note: ", rootNote)
 time.sleep(1.25)
 
 project_notes = []
+vote_events = []
 
 while relay_manager.message_pool.has_events():
     event = relay_manager.message_pool.get_event().event
@@ -49,7 +50,6 @@ while relay_manager.message_pool.has_events():
 relay_manager.close_subscription_on_all_relays("replies")
 
 for note in project_notes:
-    print("counting likes for reply: ", note.id)
     voter_like_count = 0
     likes_filter = Filter(kinds=[EventKind.LIKE], event_refs=[note.id])
     relay_manager.add_subscription_on_all_relays(note.id, Filters([likes_filter]))
@@ -57,18 +57,21 @@ for note in project_notes:
     already_voted = set()
     while relay_manager.message_pool.has_events():
         event = relay_manager.message_pool.get_event().event
-        if event.public_key in voters:
-            if event.public_key in already_voted:
-                print(event.public_key, " voted twice")
-            else:
-                already_voted.add(event.public_key)
-                voter_like_count += 1
-        else:
-            print("found ineligigble vote from ", event.public_key)
+        if event.created_at > vote_close_date:
+            continue
+        vote_events.append(event)
+        etags = list(filter(lambda t: t[0] == "e", event.tags))
+        referenced_event = etags[-1][1]
+        if referenced_event != note.id:
+            continue
+        if event.public_key in voters and event.public_key not in already_voted:
+            voter_like_count += 1
+            already_voted.add(event.public_key)
     relay_manager.close_subscription_on_all_relays(note.id)
     print("found ", voter_like_count, " votes for ", note.content.partition("\n")[0])
 
-
-print("done")
+with open('votes.txt','w') as f:
+    f.write(str(vote_events))  # set of numbers & a tuple
     
-sys.exit(0)
+print("done")
+sys.exit()
